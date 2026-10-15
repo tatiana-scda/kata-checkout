@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kata Checkout</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --text: #171923;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --green: #059669;
+    --red: #dc2626;
+    --red-soft: #fef2f2;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 20px 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 12px 20px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .col { display: grid; gap: 16px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 1px 2px rgba(23,25,35,.04), 0 8px 24px rgba(23,25,35,.05);
+  }
+  .card h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    margin: 0 0 12px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .row:last-child { margin-bottom: 0; }
+  input[type="text"], input[type="number"], select {
+    font: inherit;
+    color: var(--text);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 9px;
+    outline: none;
+    min-width: 0;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  input[type="number"] { width: 84px; }
+  .item-id { width: 44px; text-align: center; text-transform: uppercase; font-weight: 600; }
+  .item-price { width: 96px; }
+  .btn {
+    font: inherit;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    border-radius: 8px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .btn:hover { background: #f6f7f9; }
+  .btn.icon { padding: 4px 10px; color: var(--muted); font-size: 15px; }
+  .btn.icon:hover { color: var(--red); background: var(--red-soft); border-color: #fecaca; }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn.primary:hover { background: #4338ca; }
+  .btn.primary:disabled { opacity: .45; cursor: not-allowed; }
+  .add { margin-top: 10px; width: 100%; border-style: dashed; color: var(--muted); }
+  .add:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .rule-type { width: 148px; flex: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 10px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+  }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .rule-fields { display: grid; gap: 6px; margin-top: 8px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+  .checkline { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 13.5px; color: var(--muted); }
+  .checkline input { margin-top: 2px; }
+
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: 8px;
+  }
+  .key {
+    font: inherit;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 4px 8px;
+    cursor: pointer;
+    transition: transform .06s, border-color .12s, background .12s;
+  }
+  .key:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .key:active { transform: scale(.96); }
+  .key .k-id { font-size: 19px; font-weight: 700; }
+  .key .k-price { color: var(--muted); font-size: 12.5px; }
+  .keypad-empty { color: var(--muted); font-size: 13.5px; padding: 6px 2px; }
+
+  .cart-list { list-style: none; margin: 14px 0 0; padding: 0; }
+  .cart-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 2px;
+    border-top: 1px solid var(--border);
+  }
+  .cart-list li:first-child { border-top: 0; }
+  .cart-id { font-weight: 700; width: 20px; }
+  .cart-qty { color: var(--muted); }
+  .cart-line-total { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .cart-empty { color: var(--muted); font-size: 13.5px; padding: 10px 2px; border-top: 1px solid var(--border); margin-top: 14px; }
+  .subtotal {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 13.5px;
+    border-top: 1px dashed var(--border);
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
+  .total-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .total-display { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .total-display.pending { color: var(--muted); font-size: 22px; font-weight: 500; }
+  .total-display .unit { font-size: 16px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+  .error {
+    display: none;
+    margin-top: 12px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: var(--red-soft);
+    border: 1px solid #fecaca;
+    color: var(--red);
+    font-size: 13.5px;
+  }
+  .error.show { display: block; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(23, 25, 35, .45);
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    max-width: 340px;
+    box-shadow: 0 12px 40px rgba(23, 25, 35, .25);
+  }
+  .modal img { width: 100%; border-radius: 8px; }
+  .modal p { margin: 14px 0 16px; font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Kata Checkout</h1>
+  <p>Scan items, pick your pricing rules, get the total.</p>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card" id="items-card">
+      <h2>Items &amp; prices</h2>
+      <div id="items-list"></div>
+      <button class="btn add" id="add-item">+ Add item</button>
+    </section>
+
+    <section class="card" id="rules-card">
+      <h2>Pricing rules</h2>
+      <div id="rules-list"></div>
+      <button class="btn add" id="add-rule">+ Add rule</button>
+      <label class="checkline">
+        <input type="checkbox" id="auto-unit" checked>
+        <span>Price anything the rules above leave unpriced at its normal unit price — e.g. items left over after a promotion</span>
+      </label>
+      <p class="hint">Rules apply top to bottom; a rule consumes the cart items it prices. Promotions first, unit prices last.</p>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>Scan</h2>
+      <div id="keypad"></div>
+      <p class="hint" id="keypad-hint" hidden>Type the item's letter on your keyboard to scan it.</p>
+    </section>
+
+    <section class="card">
+      <h2>Cart</h2>
+      <ul class="cart-list" id="cart-list"></ul>
+      <div id="cart-empty" class="cart-empty">Cart is empty.</div>
+      <div class="subtotal"><span>Unit-price subtotal</span><span id="subtotal">£0.00</span></div>
+      <div class="total-bar">
+        <button class="btn primary" id="checkout">Checkout</button>
+        <button class="btn" id="clear-cart">Clear</button>
+        <div class="total-display pending" id="total">—</div>
+      </div>
+      <div class="error" id="error"></div>
+    </section>
+  </div>
+</main>
+
+<div class="modal-overlay" id="error-modal">
+  <div class="modal">
+    <img src="https://canvasbagsareawasteblog.wordpress.com/wp-content/uploads/2016/02/plastic-bag.gif" alt="Something went wrong">
+    <p>Oops, something went wrong! Try again</p>
+    <button class="btn primary" id="error-modal-ok">OK</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const RULE_TYPES = {
+    unitPrice:   { label: 'Unit price',           fields: ['itemId'] },
+    buyGetFree:  { label: 'Buy N get 1 free',     fields: ['itemId', 'buyQuantity'] },
+    buyBulk:     { label: 'Bulk price',           fields: ['itemId', 'bulkQuantity', 'bulkPrice'] },
+    mealDeal:    { label: 'Meal deal',            fields: ['dealItemIds', 'dealPrice'] },
+  };
+
+  const state = {
+    items: [],          // {id, priceInPence}
+    rules: [],          // {uid, type, itemId, buyQuantity, bulkQuantity, bulkPrice, dealItemIds: [], dealPrice}
+    cart: new Map(),    // itemId -> quantity
+    autoUnit: true,
+    ruleUid: 0,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const toPence = (v) => Math.round(parseFloat(v) * 100) || 0;
+  const fmt = (p) => '£' + (p / 100).toFixed(2);
+
+  function nextItemId() {
+    for (let i = 0; i < 26; i++) {
+      const id = String.fromCharCode(65 + i);
+      if (!state.items.some((it) => it.id === id)) return id;
+    }
+    return 'Z' + state.items.length;
+  }
+
+  /* ---------- items ---------- */
+
+  function renderItems() {
+    const list = $('items-list');
+    list.innerHTML = '';
+    state.items.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+
+      const id = document.createElement('input');
+      id.type = 'text';
+      id.className = 'item-id';
+      id.maxLength = 2;
+      id.value = item.id;
+      id.addEventListener('change', () => {
+        const v = id.value.trim().toUpperCase();
+        const ok = /^[A-Z0-9]{1,2}$/.test(v) && !state.items.some((it, j) => j !== idx && it.id === v);
+        if (ok) renameItem(item.id, v);
+        id.value = item.id;
+      });
+
+      const price = document.createElement('input');
+      price.type = 'number';
+      price.className = 'item-price';
+      price.min = '0';
+      price.step = '0.01';
+      price.value = (item.priceInPence / 100).toFixed(2);
+      price.addEventListener('input', () => { item.priceInPence = toPence(price.value); refreshTotals(); });
+
+      const del = document.createElement('button');
+      del.className = 'btn icon';
+      del.textContent = '✕';
+      del.title = 'Remove item';
+      del.addEventListener('click', () => deleteItem(item.id));
+
+      row.append(id, price, del);
+      list.appendChild(row);
+    });
+    if (!state.items.length) {
+      const p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = 'No items yet — add the products you sell.';
+      list.appendChild(p);
+    }
+    renderKeypad();
+  }
+
+  function renameItem(oldId, newId) {
+    state.items.find((it) => it.id === oldId).id = newId;
+    if (state.cart.has(oldId)) state.cart.set(newId, state.cart.get(oldId));
+    state.cart.delete(oldId);
+    state.rules.forEach((r) => {
+      if (r.itemId === oldId) r.itemId = newId;
+      r.dealItemIds = (r.dealItemIds || []).map((d) => (d === oldId ? newId : d));
+    });
+    renderAll();
+  }
+
+  function deleteItem(id) {
+    state.items = state.items.filter((it) => it.id !== id);
+    state.cart.delete(id);
+    state.rules = state.rules.filter((r) => r.itemId !== id && !(r.dealItemIds || []).includes(id));
+    renderAll();
+  }
+
+  function addItem() {
+    const id = nextItemId();
+    state.items.push({ id, priceInPence: 100 });
+    renderAll();
+  }
+
+  /* ---------- rules ---------- */
+
+  function addRule() {
+    state.rules.push({ uid: ++state.ruleUid, type: 'unitPrice', itemId: '', buyQuantity: 2, bulkQuantity: 3, bulkPrice: 0, dealItemIds: [], dealPrice: 0 });
+    renderRules();
+  }
+
+  function itemSelect(value, onPick) {
+    const sel = document.createElement('select');
+    sel.appendChild(new Option('Choose item…', ''));
+    state.items.forEach((it) => sel.appendChild(new Option(`${it.id} — ${fmt(it.priceInPence)}`, it.id)));
+    sel.value = value && state.items.some((it) => it.id === value) ? value : '';
+    sel.addEventListener('change', () => onPick(sel.value));
+    return sel;
+  }
+
+  function numberField(value, step, placeholder, onInput) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = step === '0.01' ? '0' : '1';
+    input.step = step;
+    input.placeholder = placeholder;
+    if (value) input.value = step === '0.01' ? (value / 100).toFixed(2) : value;
+    input.addEventListener('input', () => onInput(input.value));
+    return input;
+  }
+
+  function renderRules() {
+    const list = $('rules-list');
+    list.innerHTML = '';
+    if (!state.rules.length) {
+      const p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = 'No promotion rules — everything will be charged at unit price.';
+      list.appendChild(p);
+      return;
+    }
+    state.rules.forEach((rule) => list.appendChild(renderRuleRow(rule)));
+  }
+
+  function renderRuleRow(rule) {
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '14px';
+
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const type = document.createElement('select');
+    type.className = 'rule-type';
+    Object.entries(RULE_TYPES).forEach(([k, v]) => type.appendChild(new Option(v.label, k)));
+    type.value = rule.type;
+    type.addEventListener('change', () => {
+      rule.type = type.value;
+      if (rule.type !== 'mealDeal') rule.itemId = state.items.some((it) => it.id === rule.itemId) ? rule.itemId : '';
+      renderRules();
+    });
+
+    const del = document.createElement('button');
+    del.className = 'btn icon';
+    del.textContent = '✕';
+    del.title = 'Remove rule';
+    del.addEventListener('click', () => {
+      state.rules = state.rules.filter((r) => r !== rule);
+      renderRules();
+    });
+
+    row.append(type, del);
+    wrap.appendChild(row);
+
+    const fields = document.createElement('div');
+    fields.className = 'rule-fields';
+
+    const def = RULE_TYPES[rule.type].fields;
+
+    if (def.includes('itemId')) {
+      const line = document.createElement('div');
+      line.className = 'row';
+      line.append(itemSelect(rule.itemId, (v) => { rule.itemId = v; }));
+      fields.appendChild(line);
+    }
+    if (def.includes('buyQuantity')) {
+      const line = document.createElement('div');
+      line.className = 'row';
+      line.append(
+        document.createTextNode('Buy '),
+        numberField(rule.buyQuantity, '1', '2', (v) => { rule.buyQuantity = parseInt(v) || 0; }),
+        document.createTextNode(' of this item, get 1 free')
+      );
+      fields.appendChild(line);
+    }
+    if (def.includes('bulkQuantity')) {
+      const line = document.createElement('div');
+      line.className = 'row';
+      line.append(
+        numberField(rule.bulkQuantity, '1', '3', (v) => { rule.bulkQuantity = parseInt(v) || 0; }),
+        document.createTextNode(' or more for '),
+        numberField(rule.bulkPrice, '0.01', '1.30', (v) => { rule.bulkPrice = toPence(v); })
+      );
+      fields.appendChild(line);
+    }
+    if (def.includes('dealItemIds')) {
+      const line = document.createElement('div');
+      line.className = 'row';
+      line.className = 'chips';
+      state.items.forEach((it) => {
+        const chip = document.createElement('label');
+        chip.className = 'chip' + (rule.dealItemIds.includes(it.id) ? ' on' : '');
+        chip.textContent = it.id;
+        chip.addEventListener('click', (e) => {
+          e.preventDefault();
+          const i = rule.dealItemIds.indexOf(it.id);
+          i === -1 ? rule.dealItemIds.push(it.id) : rule.dealItemIds.splice(i, 1);
+          chip.classList.toggle('on');
+        });
+        line.appendChild(chip);
+      });
+      if (!state.items.length) line.textContent = 'Add items first.';
+      fields.appendChild(line);
+      const priceLine = document.createElement('div');
+      priceLine.className = 'row';
+      priceLine.append(document.createTextNode('Set of picked items for '), numberField(rule.dealPrice, '0.01', '1.00', (v) => { rule.dealPrice = toPence(v); }));
+      fields.appendChild(priceLine);
+    }
+
+    wrap.appendChild(fields);
+    return wrap;
+  }
+
+  /* ---------- cart ---------- */
+
+  function renderKeypad() {
+    const pad = $('keypad');
+    pad.innerHTML = '';
+    state.items.forEach((item) => {
+      const key = document.createElement('button');
+      key.className = 'key';
+      const id = document.createElement('div');
+      id.className = 'k-id';
+      id.textContent = item.id;
+      const price = document.createElement('div');
+      price.className = 'k-price';
+      price.textContent = fmt(item.priceInPence);
+      key.append(id, price);
+      key.addEventListener('click', () => scan(item.id));
+      pad.appendChild(key);
+    });
+    $('keypad-hint').hidden = state.items.length === 0;
+    if (!state.items.length) {
+      const p = document.createElement('div');
+      p.className = 'keypad-empty';
+      p.textContent = 'Add items on the left to start scanning.';
+      pad.appendChild(p);
+    }
+  }
+
+  function renderCart() {
+    const list = $('cart-list');
+    list.innerHTML = '';
+    state.cart.forEach((qty, id) => {
+      const item = state.items.find((it) => it.id === id);
+      const li = document.createElement('li');
+
+      const idSpan = document.createElement('span');
+      idSpan.className = 'cart-id';
+      idSpan.textContent = id;
+
+      const minus = document.createElement('button');
+      minus.className = 'btn icon';
+      minus.textContent = '−';
+      minus.addEventListener('click', () => setQty(id, qty - 1));
+
+      const plus = document.createElement('button');
+      plus.className = 'btn icon';
+      plus.textContent = '+';
+      plus.addEventListener('click', () => setQty(id, qty + 1));
+
+      const qtySpan = document.createElement('span');
+      qtySpan.className = 'cart-qty';
+      qtySpan.textContent = '× ' + qty;
+
+      const lineTotal = document.createElement('span');
+      lineTotal.className = 'cart-line-total';
+      lineTotal.textContent = item ? fmt(item.priceInPence * qty) : '—';
+
+      li.append(idSpan, minus, plus, qtySpan, lineTotal);
+      list.appendChild(li);
+    });
+    $('cart-empty').style.display = state.cart.size ? 'none' : 'block';
+    refreshTotals();
+  }
+
+  function scan(id) {
+    state.cart.set(id, (state.cart.get(id) || 0) + 1);
+    renderCart();
+  }
+
+  function setQty(id, qty) {
+    if (qty <= 0) state.cart.delete(id);
+    else state.cart.set(id, qty);
+    renderCart();
+  }
+
+  function refreshTotals() {
+    const subtotal = [...state.cart].reduce((sum, [id, qty]) => {
+      const item = state.items.find((it) => it.id === id);
+      return sum + (item ? item.priceInPence * qty : 0);
+    }, 0);
+    $('subtotal').textContent = fmt(subtotal);
+    $('checkout').disabled = state.cart.size === 0;
+    const total = $('total');
+    total.classList.add('pending');
+    total.textContent = '—';
+    hideError();
+  }
+
+  /* ---------- request ---------- */
+
+  function buildRequest() {
+    const pricingRules = state.rules.map((r) => {
+      if (r.type === 'unitPrice') return { type: 'unitPrice', itemId: r.itemId };
+      if (r.type === 'buyGetFree') return { type: 'buyGetFree', itemId: r.itemId, buyQuantity: r.buyQuantity };
+      if (r.type === 'buyBulk') return { type: 'buyBulk', itemId: r.itemId, bulkQuantity: r.bulkQuantity, bulkPrice: r.bulkPrice };
+      return { type: 'mealDeal', dealItemIds: r.dealItemIds, dealPrice: r.dealPrice };
+    });
+    if (state.autoUnit) {
+      state.items.forEach((it) => {
+        pricingRules.push({ type: 'unitPrice', itemId: it.id });
+      });
+    }
+    return {
+      items: state.items.map((it) => ({ id: it.id, priceInPence: it.priceInPence })),
+      pricingRules,
+      cart: { items: [...state.cart].map(([itemId, quantity]) => ({ itemId, quantity })) },
+    };
+  }
+
+  function validate() {
+    for (let i = 0; i < state.rules.length; i++) {
+      const r = state.rules[i];
+      const where = 'Rule ' + (i + 1) + ' (' + RULE_TYPES[r.type].label + ')';
+      if (r.type !== 'mealDeal' && !r.itemId) return where + ' is missing its item.';
+      if (r.type === 'mealDeal' && r.dealItemIds.length < 2) return where + ' needs at least two items.';
+      if (r.type === 'buyGetFree' && r.buyQuantity < 1) return where + ' needs a quantity of at least 1.';
+      if (r.type === 'buyBulk' && (r.bulkQuantity < 1 || r.bulkPrice <= 0)) return where + ' needs a quantity and a price.';
+      if (r.type === 'mealDeal' && r.dealPrice <= 0) return where + ' needs a price.';
+    }
+    return null;
+  }
+
+  async function checkout() {
+    const problem = validate();
+    if (problem) return showError(problem);
+    hideError();
+    const button = $('checkout');
+    button.disabled = true;
+    try {
+      const res = await fetch('/v1/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildRequest()),
+      });
+      const body = await res.json().catch(() => null);
+      if (res.status >= 500) {
+        $('error-modal').classList.add('show');
+        return;
+      }
+      if (!res.ok) {
+        showError(body && body.message ? body.message : 'Checkout failed (' + res.status + ').');
+        return;
+      }
+      const total = $('total');
+      total.classList.remove('pending');
+      total.textContent = '';
+      const amount = document.createTextNode(fmt(body.totalInPence));
+      const unit = document.createElement('span');
+      unit.className = 'unit';
+      unit.textContent = '(' + body.totalInPence + 'p)';
+      total.append(amount, unit);
+    } catch (e) {
+      showError('Could not reach the server.');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function showError(msg) { const el = $('error'); el.textContent = msg; el.classList.add('show'); }
+  function hideError() { $('error').classList.remove('show'); }
+
+  /* ---------- wiring ---------- */
+
+  function renderAll() {
+    renderItems();
+    renderRules();
+    renderCart();
+  }
+
+  $('add-item').addEventListener('click', addItem);
+  $('add-rule').addEventListener('click', addRule);
+  $('checkout').addEventListener('click', checkout);
+  $('clear-cart').addEventListener('click', () => { state.cart.clear(); renderCart(); });
+  $('auto-unit').addEventListener('change', (e) => { state.autoUnit = e.target.checked; });
+  $('error-modal-ok').addEventListener('click', () => { $('error-modal').classList.remove('show'); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const id = e.key.toUpperCase();
+    if (state.items.some((it) => it.id === id)) scan(id);
+  });
+
+  // Seed with a small starter catalogue so the page is usable immediately
+  state.items.push({ id: 'A', priceInPence: 50 }, { id: 'B', priceInPence: 75 }, { id: 'C', priceInPence: 25 });
+  renderAll();
+})();
+</script>
+</body>
+</html>

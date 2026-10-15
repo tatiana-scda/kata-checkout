@@ -15,6 +15,8 @@ The API will be exposed at `http://localhost:8080/`
 
 To try the API, you can import [docs/kata-checkout.postman_collection.json](docs/kata-checkout.postman_collection.json) into Postman — it contains example requests with response assertions.
 
+There is also a simple web UI at `http://localhost:8080/` for cashier-style checkouts where you can setup up items, prices, cart and check final value.
+
 ### Docker
 
 - Requires Docker
