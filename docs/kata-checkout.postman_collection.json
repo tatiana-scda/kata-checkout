@@ -1,0 +1,400 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-4789-a012-3456789abcde",
+    "name": "Kata Checkout",
+    "description": "Collection for the Kata Checkout API (POST /v1/checkout).\n\nEach request sends the item catalogue, the pricing rules and the cart in one body. Rule order matters: promotions (buyGetFree, buyBulk, mealDeal) must be listed before unitPrice rules, because rules consume cart items in list order.\n\nEvery request includes tests that assert the HTTP status and, for happy paths, the exact total in pence.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Happy path",
+      "item": [
+        {
+          "name": "01 - Unit prices only",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 },\n    { \"id\": \"B\", \"priceInPence\": 75 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"B\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 1 },\n      { \"itemId\": \"B\", \"quantity\": 2 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "1 x A at 50 plus 2 x B at 75. Expected total: 200."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 200\", () => pm.expect(pm.response.json().totalInPence).to.eql(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "02 - Bulk promotion",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 },\n    { \"id\": \"B\", \"priceInPence\": 75 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"buyBulk\", \"itemId\": \"A\", \"bulkQuantity\": 3, \"bulkPrice\": 130 },\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"B\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 3 },\n      { \"itemId\": \"B\", \"quantity\": 2 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "3 x A hits the bulk price of 130, plus 2 x B at 75. Expected total: 280."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 280\", () => pm.expect(pm.response.json().totalInPence).to.eql(280));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "03 - Bulk promotion with leftovers",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"buyBulk\", \"itemId\": \"A\", \"bulkQuantity\": 3, \"bulkPrice\": 130 },\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 5 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "5 x A: one bulk pack of 3 at 130, the 2 leftovers fall through to the unit price at 50 each. Expected total: 230."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 230\", () => pm.expect(pm.response.json().totalInPence).to.eql(230));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "04 - Buy X get one free",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"D\", \"priceInPence\": 150 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"buyGetFree\", \"itemId\": \"D\", \"buyQuantity\": 2 },\n    { \"type\": \"unitPrice\", \"itemId\": \"D\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"D\", \"quantity\": 3 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "3 x D with buy-2-get-1-free: pays for 2 of 3. Expected total: 300."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 300\", () => pm.expect(pm.response.json().totalInPence).to.eql(300));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "05 - Meal deal, exact",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 },\n    { \"id\": \"B\", \"priceInPence\": 75 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"mealDeal\", \"dealItemIds\": [\"A\", \"B\"], \"dealPrice\": 100 },\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"B\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 1 },\n      { \"itemId\": \"B\", \"quantity\": 1 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "One of each deal item: the meal deal (100) applies and nothing is left for the unit rules. Expected total: 100."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 100\", () => pm.expect(pm.response.json().totalInPence).to.eql(100));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "06 - Meal deal with leftovers",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 },\n    { \"id\": \"B\", \"priceInPence\": 75 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"mealDeal\", \"dealItemIds\": [\"A\", \"B\"], \"dealPrice\": 100 },\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"B\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 3 },\n      { \"itemId\": \"B\", \"quantity\": 2 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "3 x A and 2 x B: 2 complete meal deals (200), the extra A falls through to the unit price (50). Expected total: 250."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 250\", () => pm.expect(pm.response.json().totalInPence).to.eql(250));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "07 - All rule types combined",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 },\n    { \"id\": \"B\", \"priceInPence\": 75 },\n    { \"id\": \"C\", \"priceInPence\": 25 },\n    { \"id\": \"D\", \"priceInPence\": 150 },\n    { \"id\": \"E\", \"priceInPence\": 200 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"mealDeal\", \"dealItemIds\": [\"A\", \"B\"], \"dealPrice\": 100 },\n    { \"type\": \"mealDeal\", \"dealItemIds\": [\"C\", \"D\"], \"dealPrice\": 150 },\n    { \"type\": \"buyBulk\", \"itemId\": \"A\", \"bulkQuantity\": 3, \"bulkPrice\": 130 },\n    { \"type\": \"buyBulk\", \"itemId\": \"B\", \"bulkQuantity\": 2, \"bulkPrice\": 120 },\n    { \"type\": \"buyGetFree\", \"itemId\": \"D\", \"buyQuantity\": 2 },\n    { \"type\": \"buyGetFree\", \"itemId\": \"E\", \"buyQuantity\": 2 },\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"B\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"C\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"D\" },\n    { \"type\": \"unitPrice\", \"itemId\": \"E\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 3 },\n      { \"itemId\": \"B\", \"quantity\": 2 },\n      { \"itemId\": \"C\", \"quantity\": 4 },\n      { \"itemId\": \"D\", \"quantity\": 3 },\n      { \"itemId\": \"E\", \"quantity\": 3 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Two meal deals (2 x 100, 3 x 150), buy-get-free on E (2 x 200), and leftovers A (50) and C (25) at unit price. Expected total: 1125."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 1125\", () => pm.expect(pm.response.json().totalInPence).to.eql(1125));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "08 - Empty cart returns zero",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" }\n  ],\n  \"cart\": { \"items\": [] }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Nothing in the cart, so nothing to price. Expected total: 0."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 0\", () => pm.expect(pm.response.json().totalInPence).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "09 - Duplicate cart entries merge",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"unitPrice\", \"itemId\": \"A\" }\n  ],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 1 },\n      { \"itemId\": \"A\", \"quantity\": 2 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "The same item appears twice in the cart with quantities 1 and 2; they merge to 3 units. Expected total: 150."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"total is 150\", () => pm.expect(pm.response.json().totalInPence).to.eql(150));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Validation errors",
+      "item": [
+        {
+          "name": "10 - Rule references unknown item id",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"unitPrice\", \"itemId\": \"Z\" }\n  ],\n  \"cart\": { \"items\": [] }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "The pricing rule references item Z, which is not in the items catalogue. Expected: 400 Bad Request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "11 - Cart references unknown item id",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 }\n  ],\n  \"pricingRules\": [],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"Z\", \"quantity\": 1 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "The cart references item Z, which is not in the items catalogue. Expected: 400 Bad Request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "12 - Non-positive quantity",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 }\n  ],\n  \"pricingRules\": [],\n  \"cart\": {\n    \"items\": [\n      { \"itemId\": \"A\", \"quantity\": 0 }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Quantity must be a positive integer. Expected: 400 Bad Request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "13 - Unknown pricing rule type",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"A\", \"priceInPence\": 50 }\n  ],\n  \"pricingRules\": [\n    { \"type\": \"halfPrice\", \"itemId\": \"A\" }\n  ],\n  \"cart\": { \"items\": [] }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Valid rule types are unitPrice, buyGetFree, buyBulk and mealDeal. Expected: 400 Bad Request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}
