@@ -47,4 +47,15 @@ data class BuyBulkRule(val item: Item, val bulkQuantity: Int, val bulkPrice: Int
     }
 }
 
+data class MealDealRule(val items: Set<Item>, val dealPrice: Int): PricingRule {
+    override fun apply(cart: Cart): Int {
+
+        if (cart.items.keys.containsAll(items)) {
+            return 0 // TODO
+        } else {
+            return items.sumOf { UnitPriceRule(it).apply(cart) }
+        }
+    }
+}
+
 private fun getItemTotal(item: Item, cart: Cart): Int = cart.items[item] ?: 0
