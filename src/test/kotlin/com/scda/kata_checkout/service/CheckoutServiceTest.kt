@@ -63,6 +63,26 @@ class CheckoutServiceTest {
 
             assertEquals((2 * 100) + (3 * 150) + (2 * 200) + 50 + 25, total)
         }
+
+        @Test
+        fun `checkout with all rules return value in rule priority order`() {
+            val cart = Cart(mutableMapOf(
+                itemA to 3,
+                itemB to 2,
+                itemC to 4,
+                itemD to 3,
+                itemE to 3
+                )
+            )
+
+            val pricingRuleInOrder = unitRules + mealDealRules + buyBulkRules + buyGetFreeRules
+
+            val total = checkoutService.checkout(pricingRuleInOrder, cart)
+
+            val expected = (itemA.priceInPence * 3) + (itemB.priceInPence * 2) + (itemC.priceInPence * 4) + (itemD.priceInPence * 3) + (itemE.priceInPence * 3)
+
+            assertEquals(expected, total)
+        }
     }
 
     @Nested
