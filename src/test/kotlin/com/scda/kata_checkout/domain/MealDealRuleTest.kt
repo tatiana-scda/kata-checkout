@@ -32,6 +32,15 @@ class MealDealRuleTest {
 
         val total = MealDealRule(setOf(itemA, itemB), 100).apply(cart)
 
-        assertEquals(275, total)
+        assertEquals(250, total)
+    }
+
+    @Test
+    fun `returns unit price for multiple odd deal items`() {
+        val cart = Cart(mutableMapOf(itemA to 3, itemB to 5))
+
+        val total = MealDealRule(setOf(itemA, itemB), 100).apply(cart)
+
+        assertEquals(450, total)
     }
 }

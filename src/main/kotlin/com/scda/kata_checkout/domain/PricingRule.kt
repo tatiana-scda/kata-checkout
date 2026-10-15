@@ -6,7 +6,7 @@ sealed interface PricingRule {
 
 data class UnitPriceRule(val item: Item): PricingRule {
     override fun apply(cart: Cart): Int {
-        val quantityInCart = getItemTotal(item, cart)
+        val quantityInCart = getItemTotalOrZero(item, cart)
         cart.items.remove(item)
 
         return quantityInCart * item.priceInPence
@@ -15,7 +15,7 @@ data class UnitPriceRule(val item: Item): PricingRule {
 
 data class BuyGetFreeRule(val item: Item, val buyQuantity: Int): PricingRule {
     override fun apply(cart: Cart): Int {
-        val quantityInCart = getItemTotal(item, cart)
+        val quantityInCart = getItemTotalOrZero(item, cart)
    
         if (quantityInCart > buyQuantity) {
             val packsOfBuyQuantity = buyQuantity + 1
@@ -33,7 +33,7 @@ data class BuyGetFreeRule(val item: Item, val buyQuantity: Int): PricingRule {
 
 data class BuyBulkRule(val item: Item, val bulkQuantity: Int, val bulkPrice: Int): PricingRule {
     override fun apply(cart: Cart): Int {
-        val quantityInCart = getItemTotal(item, cart)
+        val quantityInCart = getItemTotalOrZero(item, cart)
 
         if (quantityInCart >= bulkQuantity) {
             val outsideBulkPack = quantityInCart % bulkQuantity
@@ -47,15 +47,31 @@ data class BuyBulkRule(val item: Item, val bulkQuantity: Int, val bulkPrice: Int
     }
 }
 
-data class MealDealRule(val items: Set<Item>, val dealPrice: Int): PricingRule {
+data class MealDealRule(val dealItems: Set<Item>, val dealPrice: Int): PricingRule {
     override fun apply(cart: Cart): Int {
 
-        if (cart.items.keys.containsAll(items)) {
-            return 0 // TODO
+        if (cart.items.keys.containsAll(dealItems)) {
+           val cartWithDealOnly = mutableMapOf<Item, Int>()
+
+            cart.items.forEach { (item, units) ->
+                if (dealItems.contains(item)) {
+                    cartWithDealOnly[item] = units
+                }
+            }
+
+            val totalDeals: Int = cartWithDealOnly.values.minOrNull() ?: 0
+
+            dealItems.forEach { dealItem -> cart.items.computeIfPresent(dealItem) { _, current ->
+                (current - totalDeals).coerceAtLeast(0)
+            } }
+
+            val outsideDealValue = cart.items.entries.sumOf { (item, units) -> item.priceInPence * units }
+
+            return (totalDeals * dealPrice) + (outsideDealValue)
         } else {
-            return items.sumOf { UnitPriceRule(it).apply(cart) }
+            return dealItems.sumOf { UnitPriceRule(it).apply(cart) }
         }
     }
 }
 
-private fun getItemTotal(item: Item, cart: Cart): Int = cart.items[item] ?: 0
+private fun getItemTotalOrZero(item: Item, cart: Cart): Int = cart.items[item] ?: 0
