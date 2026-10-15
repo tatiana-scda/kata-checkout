@@ -7,6 +7,6 @@ import org.springframework.stereotype.Service
 @Service
 class CheckoutService {
     fun checkout(pricingRule: List<PricingRule>, cart: Cart): Int {
-        return 0
+        return pricingRule.sumOf { it.apply(cart) }
     }
 }
