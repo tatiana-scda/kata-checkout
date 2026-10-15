@@ -8,12 +8,13 @@ class BuyBulkRuleTest {
     private val itemA = Item("A", 50)
 
     @Test
-    fun `returns unit price for a single item`() {
+    fun `no price nor removal for a single item`() {
         val cart = Cart(mutableMapOf(itemA to 1))
 
         val total = BuyBulkRule(itemA, 2, 70).apply(cart)
 
-        assertEquals(50, total)
+        assertEquals(0, total)
+        assertEquals(1, cart.items[itemA])
     }
     
     @Test
@@ -23,6 +24,8 @@ class BuyBulkRuleTest {
         val total = BuyBulkRule(itemA, 2, 70).apply(cart)
 
         assertEquals(70, total)
+        assertEquals(0, cart.items[itemA])
+
     }
     
     @Test
@@ -32,14 +35,18 @@ class BuyBulkRuleTest {
         val total = BuyBulkRule(itemA, 2, 70).apply(cart)
 
         assertEquals(70 * 3, total)
+        assertEquals(0, cart.items[itemA])
+
     }
     
     @Test
-    fun `returns price for multiple bulk packs plus item outside the promotion`() {
+    fun `returns price for multiple bulk packs without removing item outside the promotion`() {
         val cart = Cart(mutableMapOf(itemA to 3))
 
         val total = BuyBulkRule(itemA, 2, 70).apply(cart)
 
-        assertEquals(70 + 50, total)
+        assertEquals(70, total)
+        assertEquals(1, cart.items[itemA])
+
     }
 }

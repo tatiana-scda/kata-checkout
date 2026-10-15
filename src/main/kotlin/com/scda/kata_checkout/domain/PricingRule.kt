@@ -22,11 +22,11 @@ data class BuyGetFreeRule(val item: Item, val buyQuantity: Int): PricingRule {
             val outsidePromotionPack = quantityInCart % packsOfBuyQuantity
             val paidItems = ((quantityInCart - outsidePromotionPack) / packsOfBuyQuantity) * buyQuantity
             
-            cart.items.remove(item)
-            
-            return (paidItems * item.priceInPence) + (outsidePromotionPack * item.priceInPence)
+            cart.items[item] = outsidePromotionPack
+
+            return (paidItems * item.priceInPence)
         } else {
-            return UnitPriceRule(item).apply(cart)
+            return Integer.valueOf(0)
         }
     }
 }
@@ -38,11 +38,12 @@ data class BuyBulkRule(val item: Item, val bulkQuantity: Int, val bulkPrice: Int
         if (quantityInCart >= bulkQuantity) {
             val outsideBulkPack = quantityInCart % bulkQuantity
             val bulkPacks = (quantityInCart - outsideBulkPack) / bulkQuantity
-            cart.items.remove(item)
+
+            cart.items[item] = outsideBulkPack
             
-            return (bulkPacks * bulkPrice) + (outsideBulkPack * item.priceInPence)
+            return bulkPacks * bulkPrice
         } else {
-            return UnitPriceRule(item).apply(cart)
+            return Integer.valueOf(0)
         }
     }
 }
@@ -51,25 +52,13 @@ data class MealDealRule(val dealItems: Set<Item>, val dealPrice: Int): PricingRu
     override fun apply(cart: Cart): Int {
 
         if (cart.items.keys.containsAll(dealItems)) {
-           val cartWithDealOnly = mutableMapOf<Item, Int>()
+            val totalDeals = dealItems.minOf { cart.items[it] ?: 0 }
 
-            cart.items.forEach { (item, units) ->
-                if (dealItems.contains(item)) {
-                    cartWithDealOnly[item] = units
-                }
-            }
+            dealItems.forEach { i -> cart.items[i] = cart.items[i]?.minus(totalDeals) ?: 0 }
 
-            val totalDeals: Int = cartWithDealOnly.values.minOrNull() ?: 0
-
-            dealItems.forEach { dealItem -> cart.items.computeIfPresent(dealItem) { _, current ->
-                (current - totalDeals).coerceAtLeast(0)
-            } }
-
-            val outsideDealValue = cart.items.entries.sumOf { (item, units) -> item.priceInPence * units }
-
-            return (totalDeals * dealPrice) + (outsideDealValue)
+            return totalDeals * dealPrice
         } else {
-            return dealItems.sumOf { UnitPriceRule(it).apply(cart) }
+            return Integer.valueOf(0)
         }
     }
 }

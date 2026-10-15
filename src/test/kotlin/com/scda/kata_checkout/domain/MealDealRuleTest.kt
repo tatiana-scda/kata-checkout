@@ -9,21 +9,26 @@ class MealDealRuleTest {
     private val itemB = Item("B", 75)
 
     @Test
-    fun `returns unit price for a unique deal items`() {
+    fun `returns price for a unique deal items`() {
         val cart = Cart(mutableMapOf(itemA to 1, itemB to 1))
 
         val total = MealDealRule(setOf(itemA, itemB), 100).apply(cart)
 
         assertEquals(100, total)
+        assertEquals(0, cart.items[itemA])
+        assertEquals(0, cart.items[itemB])
+
     }
 
     @Test
-    fun `returns unit price for a multiple deal items`() {
+    fun `returns price for a multiple deal items`() {
         val cart = Cart(mutableMapOf(itemA to 3, itemB to 3))
 
         val total = MealDealRule(setOf(itemA, itemB), 100).apply(cart)
 
         assertEquals(300, total)
+        assertEquals(0, cart.items[itemA])
+        assertEquals(0, cart.items[itemB])
     }
 
     @Test
@@ -32,7 +37,9 @@ class MealDealRuleTest {
 
         val total = MealDealRule(setOf(itemA, itemB), 100).apply(cart)
 
-        assertEquals(250, total)
+        assertEquals(200, total)
+        assertEquals(1, cart.items[itemA])
+        assertEquals(0, cart.items[itemB])
     }
 
     @Test
@@ -41,6 +48,8 @@ class MealDealRuleTest {
 
         val total = MealDealRule(setOf(itemA, itemB), 100).apply(cart)
 
-        assertEquals(450, total)
+        assertEquals(300, total)
+        assertEquals(0, cart.items[itemA])
+        assertEquals(2, cart.items[itemB])
     }
 }

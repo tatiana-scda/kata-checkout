@@ -2,6 +2,7 @@ package com.scda.kata_checkout.service
 
 import com.scda.kata_checkout.domain.Cart
 import com.scda.kata_checkout.domain.PricingRule
+import com.scda.kata_checkout.domain.UnitPriceRule
 import org.springframework.stereotype.Service
 
 @Service
