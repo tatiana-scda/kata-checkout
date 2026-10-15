@@ -3,7 +3,6 @@ package com.scda.kata_checkout.service
 import com.scda.kata_checkout.domain.Cart
 import com.scda.kata_checkout.domain.Item
 import com.scda.kata_checkout.domain.UnitPriceRule
-import com.scda.kata_checkout.domain.service.CheckoutService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

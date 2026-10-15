@@ -1,4 +1,4 @@
-package com.scda.kata_checkout.domain.service
+package com.scda.kata_checkout.service
 
 import com.scda.kata_checkout.domain.Cart
 import com.scda.kata_checkout.domain.PricingRule
