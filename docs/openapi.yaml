@@ -1,0 +1,325 @@
+openapi: 3.1.0
+info:
+  title: Kata Checkout API
+  description: |
+    Checkout API for a supermarket kata. A request provides the item catalogue,
+    a list of pricing rules, and a cart. The API applies the pricing rules to the
+    cart and returns the total price in pence.
+
+    **Rule application order matters.** Rules are applied in the order they are
+    listed, and pricing rules consume cart items as they are applied. A
+    `unitPrice` rule removes every unit of its item from the cart, so promotion
+    rules (`buyGetFree`, `buyBulk`, `mealDeal`) must be listed before `unitPrice`
+    rules for the same item.
+
+    **Item references.** Pricing rules and cart entries reference items by `itemId`.
+    Every referenced `itemId` must exist in the top-level `items` catalogue, otherwise
+    the request is rejected with `400`.
+  version: 0.0.1-SNAPSHOT
+servers:
+  - url: http://localhost:8080
+    description: Local
+tags:
+  - name: checkout
+    description: Checkout operations
+paths:
+  /v1/checkout:
+    post:
+      tags:
+        - checkout
+      summary: Check out a cart with pricing rules
+      description: |
+        Applies the given pricing rules to the cart and returns the total price
+        in pence.
+
+        Rules are applied in list order; earlier rules consume cart items, so
+        list promotions before `unitPrice` rules.
+      operationId: checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+            examples:
+              promotionsAndUnitPrices:
+                summary: Bulk promotion plus unit prices
+                description: 3 x A at a bulk price of 130, plus 2 x B at unit price 75. Returns 280.
+                value:
+                  items:
+                    - id: A
+                      priceInPence: 50
+                    - id: B
+                      priceInPence: 75
+                  pricingRules:
+                    - type: buyBulk
+                      itemId: A
+                      bulkQuantity: 3
+                      bulkPrice: 130
+                    - type: unitPrice
+                      itemId: A
+                    - type: unitPrice
+                      itemId: B
+                  cart:
+                    items:
+                      - itemId: A
+                        quantity: 3
+                      - itemId: B
+                        quantity: 2
+              mealDeal:
+                summary: Meal deal across multiple items
+                value:
+                  items:
+                    - id: A
+                      priceInPence: 50
+                    - id: B
+                      priceInPence: 75
+                  pricingRules:
+                    - type: mealDeal
+                      dealItemIds: [A, B]
+                      dealPrice: 100
+                    - type: unitPrice
+                      itemId: A
+                    - type: unitPrice
+                      itemId: B
+                  cart:
+                    items:
+                      - itemId: A
+                        quantity: 1
+                      - itemId: B
+                        quantity: 1
+      responses:
+        '200':
+          description: The checkout total
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+              examples:
+                total:
+                  value:
+                    totalInPence: 280
+        '400':
+          description: |
+            The request body is not a valid `CheckoutRequest`. Causes include:
+
+            - malformed JSON,
+            - an unknown pricing rule `type`,
+            - a `quantity` that is not a positive integer,
+            - a rule or cart entry referencing an `itemId` that is not in the
+              request's `items` catalogue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unknownItemId:
+                  summary: A rule references an item not in the catalogue
+                  value:
+                    timestamp: '2026-10-15T17:20:08.862Z'
+                    status: 400
+                    error: Bad Request
+                    path: /v1/checkout
+                nonPositiveQuantity:
+                  summary: A cart entry has a non-positive quantity
+                  value:
+                    timestamp: '2026-10-15T17:20:08.916Z'
+                    status: 400
+                    error: Bad Request
+                    path: /v1/checkout
+        '415':
+          description: The request body is not `application/json`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    ItemRequest:
+      type: object
+      description: An item in the request's item catalogue.
+      required:
+        - id
+        - priceInPence
+      properties:
+        id:
+          type: string
+          description: Unique item identifier referenced by pricing rules and cart entries.
+          examples: [A]
+        priceInPence:
+          type: integer
+          minimum: 0
+          description: Unit price of the item in pence.
+          examples: [50]
+    PricingRule:
+      oneOf:
+        - $ref: '#/components/schemas/UnitPriceRule'
+        - $ref: '#/components/schemas/BuyGetFreeRule'
+        - $ref: '#/components/schemas/BuyBulkRule'
+        - $ref: '#/components/schemas/MealDealRule'
+      discriminator:
+        propertyName: type
+        mapping:
+          unitPrice: '#/components/schemas/UnitPriceRule'
+          buyGetFree: '#/components/schemas/BuyGetFreeRule'
+          buyBulk: '#/components/schemas/BuyBulkRule'
+          mealDeal: '#/components/schemas/MealDealRule'
+      description: |
+        A pricing rule. The `type` property selects the concrete rule. Rules are
+        applied in list order and consume cart items as they are applied.
+    UnitPriceRule:
+      type: object
+      description: Charges the item's unit price for every unit in the cart and removes the item from the cart.
+      required:
+        - type
+        - itemId
+      properties:
+        type:
+          type: string
+          const: unitPrice
+        itemId:
+          type: string
+    BuyGetFreeRule:
+      type: object
+      description: |
+        For a cart holding more than `buyQuantity` units of the item, charges only
+        the paid units of each complete buy-`buyQuantity`-get-1-free pack. The
+        remaining units are left in the cart for later rules.
+      required:
+        - type
+        - itemId
+        - buyQuantity
+      properties:
+        type:
+          type: string
+          const: buyGetFree
+        itemId:
+          type: string
+        buyQuantity:
+          type: integer
+          minimum: 1
+          description: Number of units to buy to get one free.
+    BuyBulkRule:
+      type: object
+      description: |
+        For a cart holding at least `bulkQuantity` units of the item, charges
+        `bulkPrice` per complete pack of `bulkQuantity` units. The remaining units
+        are left in the cart for later rules.
+      required:
+        - type
+        - itemId
+        - bulkQuantity
+        - bulkPrice
+      properties:
+        type:
+          type: string
+          const: buyBulk
+        itemId:
+          type: string
+        bulkQuantity:
+          type: integer
+          minimum: 1
+        bulkPrice:
+          type: integer
+          minimum: 0
+          description: Price of a complete pack of `bulkQuantity` units, in pence.
+    MealDealRule:
+      type: object
+      description: |
+        Charges `dealPrice` per complete set of all `dealItemIds` present in the
+        cart. One unit of each deal item is removed per complete deal; leftovers
+        are left in the cart for later rules.
+      required:
+        - type
+        - dealItemIds
+        - dealPrice
+      properties:
+        type:
+          type: string
+          const: mealDeal
+        dealItemIds:
+          type: array
+          minItems: 2
+          uniqueItems: true
+          items:
+            type: string
+        dealPrice:
+          type: integer
+          minimum: 0
+    CartItemRequest:
+      type: object
+      description: A cart entry; an item reference plus the quantity to buy.
+      required:
+        - itemId
+        - quantity
+      properties:
+        itemId:
+          type: string
+          description: Must exist in the request's `items` catalogue.
+        quantity:
+          type: integer
+          minimum: 1
+          description: Number of units of the item. Must be positive.
+          examples: [3]
+    CartRequest:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemRequest'
+          description: |
+            Cart entries. Entries referencing the same `itemId` are merged by
+            summing their quantities.
+    CheckoutRequest:
+      type: object
+      required:
+        - items
+        - pricingRules
+        - cart
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemRequest'
+          description: The item catalogue for this checkout.
+        pricingRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PricingRule'
+          description: Pricing rules applied in order. List promotions before `unitPrice` rules.
+        cart:
+          $ref: '#/components/schemas/CartRequest'
+    CheckoutResponse:
+      type: object
+      required:
+        - totalInPence
+      properties:
+        totalInPence:
+          type: integer
+          description: The checkout total in pence.
+          examples: [280]
+    Error:
+      type: object
+      description: Error body returned by Spring Boot for failed requests.
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          examples: [400, 415, 500]
+        error:
+          type: string
+          examples: [Bad Request, Unsupported Media Type, Internal Server Error]
+        path:
+          type: string
+          examples: [/v1/checkout]
