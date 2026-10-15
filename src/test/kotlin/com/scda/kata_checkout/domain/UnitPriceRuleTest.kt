@@ -51,7 +51,7 @@ class UnitPriceRuleTest {
 
         UnitPriceRule(itemA).apply(cart)
 
-        assertEquals(1, cart.items[itemB])
-        assertEquals(0, cart.items[itemA])
+        assertEquals(1, cart.items[itemB] )
+        assertEquals(null, cart.items[itemA])
     }
 }
